@@ -38,11 +38,7 @@ export function getAutoSelectedCredential(
 		overrideCredentials,
 	);
 
-	// A credential reachable only through the user's personal route must be
-	// picked explicitly, never silently attached to a node in a shared project
-	const allOptions = credentialTypesNodeDescriptionDisplayed.value
-		.flatMap((type) => type.options)
-		.filter((option) => option.sharedRoute !== 'personal');
+	const allOptions = credentialTypesNodeDescriptionDisplayed.value.flatMap((type) => type.options);
 	if (allOptions.length === 0) return undefined;
 
 	const mostRecent = allOptions.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
