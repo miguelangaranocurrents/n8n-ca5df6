@@ -574,7 +574,9 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		invalid: INodeCredentialsDetails;
 		type: string;
 	}) {
-		nodes.value.forEach((node: INodeUi) => {
+		let changed = false;
+
+		nodes.value.forEach((node: INodeUi, nodeIndex: number) => {
 			const nodeCredentials: INodeCredentials | undefined = (node as unknown as INode).credentials;
 			if (!nodeCredentials?.[data.type]) {
 				return;
@@ -582,25 +584,31 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 			const nodeCredentialDetails: INodeCredentialsDetails | string = nodeCredentials[data.type];
 
+			const isInvalid =
+				typeof nodeCredentialDetails === 'string'
+					? nodeCredentialDetails === data.invalid.name
+					: nodeCredentialDetails.id === null
+						? nodeCredentialDetails.name === data.invalid.name
+						: nodeCredentialDetails.id === data.invalid.id;
+
+			if (!isInvalid) {
+				return;
+			}
+
+			// Replace through updateNodeAtIndex (not in place) so the change is tracked
+			// and the workflow is marked dirty, otherwise it would never be saved
 			if (
-				typeof nodeCredentialDetails === 'string' &&
-				nodeCredentialDetails === data.invalid.name
+				updateNodeAtIndex(nodeIndex, {
+					credentials: { ...nodeCredentials, [data.type]: data.credentials },
+				})
 			) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				return;
-			}
-
-			if (nodeCredentialDetails.id === null) {
-				if (nodeCredentialDetails.name === data.invalid.name) {
-					(node.credentials as INodeCredentials)[data.type] = data.credentials;
-				}
-				return;
-			}
-
-			if (nodeCredentialDetails.id === data.invalid.id) {
-				(node.credentials as INodeCredentials)[data.type] = data.credentials;
+				changed = true;
 			}
 		});
+
+		if (changed) {
+			void onStateDirty.trigger();
+		}
 	}
 
 	// Assign credential to all nodes that support it but don't have it set
